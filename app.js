@@ -944,16 +944,25 @@ async function cetakRekapan() {
   const linkIkon = document.querySelector('link[rel~="icon"]');
   const logoSrc = CONFIG_HEADER.logoUrl || (linkIkon ? linkIkon.href : "");
   const logo = logoSrc ? `<img src="${esc(logoSrc)}" alt="" class="cetak-logo" onerror="this.style.display='none'">` : "";
+  
   const baris = dataTampil.map((i, n) => `
     <tr>
       <td>${n + 1}</td>
-      <td class="mono">${esc(i.ticketId)}<br><span class="kecil">${esc(i.tanggal)}${i.jam ? " " + esc(i.jam) : ""}</span></td>
-      <td>${esc(i.nama)}</td>
-      <td>${esc(i.kategori || "-")}</td>
-      <td>${esc(i.rincian)}</td>
-      <td>${esc(labelStatus(i.status))}</td>
-      <td>${esc(i.tindakLanjut || "-")}</td>
+      <td>
+        <div class="cetak-subjudul">${esc(i.nama || "Anonim")}</div>
+        <div class="mono">${esc(i.ticketId)}</div>
+        <div class="kecil">${esc(i.tanggal)}${i.jam ? " " + esc(i.jam) : ""}</div>
+      </td>
+      <td>
+        <div class="cetak-subjudul">${esc(i.kategori || "-")}</div>
+        <div class="cetak-uraian">${esc(i.rincian)}</div>
+      </td>
+      <td>
+        <div class="cetak-subjudul">${esc(labelStatus(i.status))}</div>
+        <div class="cetak-uraian">${esc(i.tindakLanjut || "-")}</div>
+      </td>
     </tr>`).join("");
+
   document.getElementById("areaCetak").innerHTML = `
     <div class="cetak-kop">
       ${logo}
@@ -964,7 +973,14 @@ async function cetakRekapan() {
     </div>
     <p class="kecil">Dicetak: ${esc(waktu)} &nbsp;|&nbsp; ${esc(filterAktifTeks())} &nbsp;|&nbsp; Total: ${dataTampil.length} laporan</p>
     <table class="cetak-tabel">
-      <thead><tr><th>No</th><th>Tiket / Tanggal</th><th>Pelapor</th><th>Kategori</th><th>Rincian Aduan</th><th>Status</th><th>Tindak Lanjut</th></tr></thead>
+      <thead>
+        <tr>
+          <th>No</th>
+          <th>Pelapor &amp; Tiket</th>
+          <th>Kategori &amp; Rincian Aduan</th>
+          <th>Status &amp; Tindak Lanjut</th>
+        </tr>
+      </thead>
       <tbody>${baris}</tbody>
     </table>`;
   await tungguGambar(document.getElementById("areaCetak"));

@@ -1,13 +1,28 @@
 // ================= UTILITAS & MEMORI LOKAL =================
-let kodeAksesAktif = "";
+const KUNCI_SESI_ADMIN = "sesiKodeAksesAdmin";
+let kodeAksesAktif = sessionStorage.getItem(KUNCI_SESI_ADMIN) || "";
 let pesanRekapanTerakhir = "";
 
 // 1. Muat Draft dari Local Storage & Render UI saat halaman dimuat
 document.addEventListener("DOMContentLoaded", () => {
-  renderHeader(); 
+  renderHeader();
   renderKategori(); // CATATAN PENYESUAIAN: Merender daftar kategori
   muatDraft();      // muatDraft dipanggil setelah kategori selesai dibuat
+  mulaiJudulBerjalan(); // Menjalankan efek teks berjalan pada title tab browser
 });
+
+// --- FUNGSI JUDUL TAB BROWSER BERJALAN (MARQUEE) ---
+function mulaiJudulBerjalan() {
+  // Mengambil teks asli dari tag <title> di index.html
+  const teksAsli = (document.title || `${CONFIG_HEADER.namaPemda} - ${CONFIG_HEADER.namaAplikasi}`).trim();
+  // Tambahkan pemisah di ujung agar putaran teks terlihat rapi
+  let teksBerjalan = teksAsli + "   •   ";
+  
+  setInterval(() => {
+    teksBerjalan = teksBerjalan.substring(1) + teksBerjalan.substring(0, 1);
+    document.title = teksBerjalan;
+  }, 250); // Kecepatan geser (250 milidetik per huruf)
+}
 
 // --- WARNA HEADER DARI config.js (dengan nilai bawaan bila ada kunci yang belum diisi) ---
 function warnaHeader() {
@@ -157,6 +172,11 @@ function pindahTab(namaTab) {
     document.getElementById(`tab-${tab}`).classList.toggle('hidden', tab !== namaTab);
     setGayaTab(tab, tab === namaTab);
   });
+
+  // Jika pindah ke tab admin dan sesi masih tersimpan di sessionStorage tetapi data belum dimuat (misal habis refresh halaman)
+  if (namaTab === 'admin' && kodeAksesAktif && document.getElementById("adminDataBox").classList.contains("hidden")) {
+    bukaRekapanAdmin();
+  }
 }
 
 function toggleAnonim() {
@@ -560,6 +580,7 @@ async function ambilRekapan(kode) {
     return false;
   }
   kodeAksesAktif = kode;
+  try { sessionStorage.setItem(KUNCI_SESI_ADMIN, kode); } catch (e) {}
   if (result.data && result.data.length && !("kategori" in result.data[0])) {
     tampilkanModal("error", "Backend Belum Diperbarui", "Server belum mengirim kolom kategori, jam, dan email. Pasang Code.gs terbaru lalu Deploy &rarr; Manage deployments &rarr; New version.");
   }
@@ -576,7 +597,12 @@ async function bukaRekapanAdmin() {
   btn.innerText = "Memuat...";
   try {
     const ok = await ambilRekapan(kode);
-    if (!ok) return tampilkanModal("error", "Gagal", "Kode akses salah atau gagal memuat data." + (pesanRekapanTerakhir ? "<br><br><span class=\"text-xs text-slate-500\">Pesan server: " + esc(pesanRekapanTerakhir) + "</span>" : ""));
+    if (!ok) {
+      // Jika kode di sesi ternyata sudah tidak valid (misal diganti di server), bersihkan sesi
+      kodeAksesAktif = "";
+      try { sessionStorage.removeItem(KUNCI_SESI_ADMIN); } catch (e) {}
+      return tampilkanModal("error", "Gagal", "Kode akses salah atau gagal memuat data." + (pesanRekapanTerakhir ? "<br><br><span class=\"text-xs text-slate-500\">Pesan server: " + esc(pesanRekapanTerakhir) + "</span>" : ""));
+    }
     input.value = "";
     document.getElementById("adminAuthBox").classList.add("hidden");
     document.getElementById("adminDataBox").classList.remove("hidden");
@@ -613,6 +639,7 @@ async function muatUlangRekapan() {
 
 function keluarAdmin() {
   kodeAksesAktif = "";
+  try { sessionStorage.removeItem(KUNCI_SESI_ADMIN); } catch (e) {}
   dataRekapan = [];
   dataTampil = [];
   itemDiedit = null;

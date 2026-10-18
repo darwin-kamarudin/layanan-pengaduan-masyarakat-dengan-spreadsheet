@@ -40,10 +40,8 @@ body {
 
 @media print {
   @page { size: A4 landscape; margin: 12mm; }
-
   body > *:not(#areaCetak) { display: none !important; }
   body { background: #ffffff !important; }
-
   #areaCetak {
     display: block;
     color: #000;
@@ -52,8 +50,7 @@ body {
   }
   #areaCetak h1 { font-size: 15pt; margin: 0; font-weight: 700; }
   #areaCetak .kecil { font-size: 8.5pt; color: #444; }
-  #areaCetak .mono { font-family: 'Courier New', monospace; white-space: nowrap; }
-
+  #areaCetak .mono { font-family: 'Courier New', monospace; font-weight: 600; white-space: nowrap; }
   .cetak-kop {
     display: flex;
     align-items: center;
@@ -63,12 +60,11 @@ body {
     border-bottom: 2px solid #000;
   }
   .cetak-logo { width: 48px; height: 48px; object-fit: contain; }
-
   .cetak-tabel { width: 100%; border-collapse: collapse; margin-top: 8px; }
   .cetak-tabel th,
   .cetak-tabel td {
     border: 1px solid #666;
-    padding: 4px 6px;
+    padding: 5px 8px;
     vertical-align: top;
     text-align: left;
     word-break: break-word;
@@ -76,7 +72,25 @@ body {
   .cetak-tabel th { background: #e5e7eb; font-weight: 700; }
   .cetak-tabel thead { display: table-header-group; }
   .cetak-tabel tr { page-break-inside: avoid; }
-  .cetak-tabel td:nth-child(1) { width: 4%; text-align: center; }
-  .cetak-tabel td:nth-child(5),
-  .cetak-tabel td:nth-child(7) { width: 28%; }
+  
+  /* Pengaturan lebar 4 kolom tabel cetak */
+  .cetak-tabel td:nth-child(1) { width: 4%; text-align: center; } /* No */
+  .cetak-tabel td:nth-child(2) { width: 20%; }                    /* Pelapor & Tiket */
+  .cetak-tabel td:nth-child(3) { width: 40%; }                    /* Kategori & Rincian Aduan */
+  .cetak-tabel td:nth-child(4) { width: 36%; }                    /* Status & Tindak Lanjut */
+
+  /* Gaya untuk Pelapor, Kategori & Status di bagian atas sel */
+  .cetak-subjudul {
+    font-weight: 700;
+    font-size: 9.5pt;
+    color: #111;
+    padding-bottom: 3px;
+    margin-bottom: 4px;
+    border-bottom: 1px dashed #bbb;
+  }
+  /* Gaya untuk Rincian Aduan & Tindak Lanjut di bagian bawah sel */
+  .cetak-uraian {
+    white-space: pre-line;
+    line-height: 1.4;
+  }
 }

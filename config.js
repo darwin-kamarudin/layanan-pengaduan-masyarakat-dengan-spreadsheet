@@ -3,7 +3,7 @@
 // ==========================================
 
 // Ganti nilai di bawah ini dengan URL Web App Google Apps Script Anda (pastikan berakhiran /exec)
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzBHSsTosIv2DXaeG4a2TR6Ocxwd1fC0Nu_oTDKMwOz4y5Zgr0x8i4ArpgDBh0vkBgq/exec";
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz_1RMzsM4hJrB_xs28mM7iyGdY650g6Khm_dCXrmq9nK65_8tytvVa0OdcO621Bxzy/exec";
 
 // --- TEMA WARNA APLIKASI ---
 // Satu pengaturan ini mengubah warna header, tombol, fokus input, dan aksen di seluruh halaman.

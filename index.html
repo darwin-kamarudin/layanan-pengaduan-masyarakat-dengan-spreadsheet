@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Kotak Saran dan Pengaduan Online</title>
+  <title>PEMDA KOTA - LAYANAN PENGADUAN MASYARAKAT</title>
   
   <!-- PENAMBAHAN FAVICON MENGGUNAKAN SVG -->
   <link rel="icon" href="./public/asset/logo.svg" type="image/svg+xml">
@@ -17,7 +17,9 @@
 </head>
 <body class="bg-tema-50 text-slate-800 min-h-screen">
   
+
   <header id="headerInstansi"></header>
+
 
   <main class="max-w-4xl mx-auto px-4 py-8">
     
@@ -86,9 +88,20 @@
         <h2 class="text-lg font-bold text-slate-900">Lacak Status Penanganan</h2>
       </div>
       <div class="flex gap-2 max-w-md">
-        <input type="text" id="inputTiketCari" placeholder="Contoh: ADU-65BX8" class="flex-1 form-input font-mono">
-        <button onclick="lacakTiket()" class="bg-tema-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-tema-700">Cek Status</button>
-      </div>
+  <input type="text" id="inputTiketCari" placeholder="Contoh: ADU-65BX8" onkeydown="if(event.key==='Enter') lacakTiket()" class="flex-1 form-input font-mono">
+  <button id="btnLacak" onclick="lacakTiket()" class="bg-tema-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-tema-700 transition disabled:opacity-60 disabled:cursor-not-allowed">Cek Status</button>
+</div>
+
+<!-- PROGRESS BAR LACAK -->
+<div id="lacakProgressContainer" class="hidden mt-4 max-w-md" role="status" aria-live="polite">
+  <div class="flex justify-between text-xs mb-1">
+    <span class="font-semibold text-tema-600">Sedang mencari nomor tiket Anda...</span>
+    <span id="lacakProgressText" class="font-bold text-tema-700">0%</span>
+  </div>
+  <div class="w-full bg-slate-200 rounded-full h-2.5">
+    <div id="lacakProgressBar" class="bg-tema-600 h-2.5 rounded-full transition-all duration-300" style="width: 0%"></div>
+  </div>
+</div>
       
       <!-- CATATAN PENYESUAIAN: Wadah Hasil Lacak Berupa Timeline -->
       <div id="hasilLacak" class="hidden mt-6 p-5 rounded-xl border bg-slate-50 shadow-inner">

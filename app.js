@@ -1,5 +1,6 @@
 // ================= UTILITAS & MEMORI LOKAL =================
 let kodeAksesAktif = "";
+let pesanRekapanTerakhir = "";
 
 // 1. Muat Draft dari Local Storage & Render UI saat halaman dimuat
 document.addEventListener("DOMContentLoaded", () => {
@@ -48,10 +49,10 @@ function renderHeader() {
     : '';
 
   headerEl.innerHTML = `
-    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4 md:py-6 relative z-10">
-      <div class="flex flex-col md:flex-row items-center md:items-center justify-between gap-4 md:gap-4 w-full">
+    <div class="max-w-4xl mx-auto px-4 py-4 md:py-6 relative z-10">
+      <div class="flex flex-col lg:flex-row items-center md:items-center justify-between gap-4 md:gap-4 w-full">
         
-        <div class="flex flex-col md:flex-row items-center justify-center md:justify-start gap-2 md:gap-4 min-w-0 w-full md:w-auto flex-1">
+        <div class="flex flex-col lg:flex-row items-center justify-center md:justify-start gap-2 md:gap-4 min-w-0 w-full md:w-auto flex-1">
           ${logoHtml}
           
           <div class="min-w-0 space-y-0.5 sm:space-y-1 flex flex-col items-center md:items-start text-center md:text-left">
@@ -71,9 +72,9 @@ function renderHeader() {
         </div>
 
         <div class="flex shrink-0 w-full md:w-auto overflow-x-auto justify-center ${W.warnaAksen} p-1 rounded-xl text-xs font-medium border ${W.warnaBorder} shadow-inner">
-          <button onclick="pindahTab('form')" id="btnTab-form" class="tab-btn px-3 py-1.5 whitespace-nowrap flex-1 md:flex-none text-center">Form Aduan</button>
-          <button onclick="pindahTab('lacak')" id="btnTab-lacak" class="tab-btn px-3 py-1.5 whitespace-nowrap flex-1 md:flex-none text-center">Lacak Status</button>
-          <button onclick="pindahTab('admin')" id="btnTab-admin" class="tab-btn px-3 py-1.5 whitespace-nowrap flex-1 md:flex-none text-center">Admin</button>
+          <button onclick="pindahTab('form')" id="btnTab-form" class="tab-btn px-3 py-1.5 whitespace-nowrap flex-1 lg:flex-none text-center">Form Aduan</button>
+          <button onclick="pindahTab('lacak')" id="btnTab-lacak" class="tab-btn px-3 py-1.5 whitespace-nowrap flex-1 lg:flex-none text-center">Lacak Status</button>
+          <button onclick="pindahTab('admin')" id="btnTab-admin" class="tab-btn px-3 py-1.5 whitespace-nowrap flex-1 lg:flex-none text-center">Admin</button>
         </div>
         
       </div>
@@ -228,33 +229,37 @@ async function panggilAPI(payload) {
   const res = await fetch(SCRIPT_URL, { method: "POST", body: JSON.stringify(payload) });
   const teks = await res.text();
   try { return JSON.parse(teks); } 
-  catch (e) { throw new Error("Respons server tidak valid."); }
+  catch (e) {
+    console.error("[API] Respons server bukan JSON. HTTP", res.status, "| Awal isi:", teks.slice(0, 500));
+    throw new Error("Respons server tidak valid (HTTP " + res.status + "). Buka Console (F12) untuk detail.");
+  }
 }
 
 async function panggilAPIProgress(payload, onProgress) {
-  return new Promise(async (resolve, reject) => {
-    let progress = 0;
-    const intervalAnimasi = setInterval(() => {
-      progress += Math.floor(Math.random() * 15) + 5; 
-      if (progress > 90) progress = 90; 
-      if (onProgress) onProgress(progress);
-    }, 800);
+  let progress = 0;
+  const intervalAnimasi = setInterval(() => {
+    progress += Math.floor(Math.random() * 15) + 5; 
+    if (progress > 90) progress = 90; 
+    if (onProgress) onProgress(progress);
+  }, 800);
+  try {
+    let res;
     try {
-      const res = await fetch(SCRIPT_URL, { 
-        method: "POST", 
-        body: JSON.stringify(payload) 
-      });
-      
-      clearInterval(intervalAnimasi);
-      if (onProgress) onProgress(100); 
-      
-      const teks = await res.text();
-      resolve(JSON.parse(teks));
+      res = await fetch(SCRIPT_URL, { method: "POST", body: JSON.stringify(payload) });
     } catch (e) {
-      clearInterval(intervalAnimasi);
-      reject(new Error("Jaringan terputus atau koneksi tidak stabil."));
+      console.error("[API] Gagal menghubungi server:", e);
+      throw new Error("Jaringan terputus atau koneksi tidak stabil.");
     }
-  });
+    const teks = await res.text();
+    if (onProgress) onProgress(100);
+    try { return JSON.parse(teks); }
+    catch (e) {
+      console.error("[API] Respons server bukan JSON. HTTP", res.status, "| Awal isi:", teks.slice(0, 500));
+      throw new Error("Respons server tidak valid (HTTP " + res.status + "). Buka Console (F12) untuk detail.");
+    }
+  } finally {
+    clearInterval(intervalAnimasi);
+  }
 }
 
 // ================= LOGIKA KODE UPLOAD =================
@@ -416,30 +421,60 @@ async function kirimAduan(e) {
 
 // ================= LACAK TIKET & TIMELINE =================
 async function lacakTiket() {
-  const ticketId = document.getElementById("inputTiketCari").value.trim();
+  const input = document.getElementById("inputTiketCari");
+  const ticketId = input.value.trim();
   const hasil = document.getElementById("hasilLacak");
+  const btn = document.getElementById("btnLacak");
+  const progressContainer = document.getElementById("lacakProgressContainer");
+  const progressBar = document.getElementById("lacakProgressBar");
+  const progressText = document.getElementById("lacakProgressText");
+
   if (!ticketId) return tampilkanModal("error", "Perhatian", "Masukkan nomor tiket!");
+  if (btn.disabled) return; // cegah klik ganda saat proses berjalan
+
   hasil.classList.add("hidden");
-  
+  btn.disabled = true;
+  btn.innerText = "Memproses...";
+  input.disabled = true;
+
+  // Mulai dari 5% agar bar langsung terlihat bergerak
+  progressBar.style.width = "5%";
+  progressText.innerText = "5%";
+  progressContainer.classList.remove("hidden");
+
   try {
-    const result = await panggilAPI({ action: "lacakAduan", ticketId: ticketId });
+    const result = await panggilAPIProgress(
+      { action: "lacakAduan", ticketId: ticketId },
+      (percent) => {
+        progressBar.style.width = percent + "%";
+        progressText.innerText = percent + "%";
+      }
+    );
+
     if (result.status === "success") {
       document.getElementById("lacakTiketId").innerText = result.data.ticketId;
-      
-      // Ambil data yang dibutuhkan
+
       const statusSaatIni = result.data.status || "Menunggu Tindak Lanjut";
       const tanggalMasuk = result.data.tanggal || "-";
       const tindakLanjut = result.data.tindakLanjut || "Belum ada catatan dari petugas.";
-      
-      // Render timeline berdasarkan status
+
       renderTimeline(statusSaatIni, tanggalMasuk, tindakLanjut);
-      
       hasil.classList.remove("hidden");
     } else {
-      tampilkanModal("error", "Tidak Ditemukan", result.message);
+      console.warn("[API] lacakAduan ditolak server:", result);
+      tampilkanModal("error", "Tidak Ditemukan", result.message || "Nomor tiket tidak ditemukan.");
     }
   } catch (err) {
-    tampilkanModal("error", "Kendala Jaringan", "Gagal menghubungi server. Silakan coba lagi.");
+    tampilkanModal("error", "Kendala Jaringan", err.message || "Gagal menghubungi server. Silakan coba lagi.");
+  } finally {
+    setTimeout(() => {
+      progressContainer.classList.add("hidden");
+      progressBar.style.width = "0%";
+      progressText.innerText = "0%";
+      btn.disabled = false;
+      btn.innerText = "Cek Status";
+      input.disabled = false;
+    }, 600);
   }
 }
 
@@ -519,7 +554,11 @@ function tglLokal() {
 
 async function ambilRekapan(kode) {
   const result = await panggilAPI({ action: "getRekapan", kodeAkses: kode });
-  if (result.status !== "success") return false;
+  if (result.status !== "success") {
+    console.warn("[API] getRekapan ditolak server:", result);
+    pesanRekapanTerakhir = result.message || "";
+    return false;
+  }
   kodeAksesAktif = kode;
   if (result.data && result.data.length && !("kategori" in result.data[0])) {
     tampilkanModal("error", "Backend Belum Diperbarui", "Server belum mengirim kolom kategori, jam, dan email. Pasang Code.gs terbaru lalu Deploy &rarr; Manage deployments &rarr; New version.");
@@ -537,7 +576,7 @@ async function bukaRekapanAdmin() {
   btn.innerText = "Memuat...";
   try {
     const ok = await ambilRekapan(kode);
-    if (!ok) return tampilkanModal("error", "Gagal", "Kode akses salah atau gagal memuat data.");
+    if (!ok) return tampilkanModal("error", "Gagal", "Kode akses salah atau gagal memuat data." + (pesanRekapanTerakhir ? "<br><br><span class=\"text-xs text-slate-500\">Pesan server: " + esc(pesanRekapanTerakhir) + "</span>" : ""));
     input.value = "";
     document.getElementById("adminAuthBox").classList.add("hidden");
     document.getElementById("adminDataBox").classList.remove("hidden");

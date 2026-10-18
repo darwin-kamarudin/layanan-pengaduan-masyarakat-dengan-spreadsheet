@@ -465,6 +465,49 @@ document.getElementById('inputFile').addEventListener('change', function() {
   }
 });
 
+// ===== ANTI TIKET GANDA (idempotensi kirim) =====
+// Satu laporan = satu "kunci kirim". Kunci dipakai ulang selama isi laporan tidak berubah,
+// sehingga jika respons hilang karena koneksi putus lalu pelapor menekan kirim lagi,
+// server mengenali kiriman yang sama dan mengembalikan tiket yang sudah ada.
+const KUNCI_STORAGE_KIRIM = "kunciKirimAduan";
+
+function buatKunciKirim_() {
+  if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+  return Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 12);
+}
+
+function ambilKunciKirim_(sidikJari) {
+  try {
+    const tersimpan = JSON.parse(localStorage.getItem(KUNCI_STORAGE_KIRIM) || "null");
+    if (tersimpan && tersimpan.sidik === sidikJari && tersimpan.kunci) return tersimpan.kunci;
+  } catch (e) {}
+  const kunci = buatKunciKirim_();
+  try { localStorage.setItem(KUNCI_STORAGE_KIRIM, JSON.stringify({ kunci: kunci, sidik: sidikJari })); } catch (e) {}
+  return kunci;
+}
+
+function hapusKunciKirim_() {
+  try { localStorage.removeItem(KUNCI_STORAGE_KIRIM); } catch (e) {}
+}
+
+// Kirim otomatis diulang bila koneksi gagal. Aman diulang karena server memakai kunci kirim yang sama.
+async function kirimDenganUlang_(payload, onProgress, onUlang) {
+  const MAKS = 3;
+  let errTerakhir;
+  for (let i = 1; i <= MAKS; i++) {
+    try {
+      return await panggilAPIProgress(payload, onProgress);
+    } catch (err) {
+      errTerakhir = err;
+      if (i < MAKS) {
+        if (onUlang) onUlang(i + 1, MAKS);
+        await new Promise(r => setTimeout(r, 2000 * i));
+      }
+    }
+  }
+  throw errTerakhir;
+}
+
 async function kirimAduan(e) {
   e.preventDefault();
   const inputRincian = document.getElementById("inputRincian").value;
@@ -509,16 +552,21 @@ async function kirimAduan(e) {
     fileName: fileName,
     kodeUpload: fileData ? kodeUpload : ""
   };
+  const sidikJari = [payload.nama, payload.email, payload.kategori, payload.rincian, fileName || "", fileData ? fileData.length : 0].join("\u241F");
+  payload.kunciKirim = ambilKunciKirim_(sidikJari);
   const progressContainer = document.getElementById('uploadProgressContainer');
   const progressBar = document.getElementById('uploadProgressBar');
   const progressText = document.getElementById('uploadProgressText');
   progressContainer.classList.remove('hidden');
   try {
-    const result = await panggilAPIProgress(payload, (percent) => {
+    const result = await kirimDenganUlang_(payload, (percent) => {
       progressBar.style.width = percent + '%';
       progressText.innerText = percent + '%';
+    }, (ke, maks) => {
+      btn.innerText = `Koneksi tidak stabil, mencoba lagi (${ke}/${maks})...`;
     });
     if (result.status === "success") {
+      hapusKunciKirim_();
       // simpan data tiket untuk dijadikan gambar saat "Saya Mengerti" diklik (ambil sebelum form di-reset)
       const sekarang = new Date();
       tiketTertunda = {
@@ -536,7 +584,7 @@ async function kirimAduan(e) {
       tampilkanModal("error", "Gagal Mengirim", result.message || "Terjadi kesalahan sistem.");
     }
   } catch (err) {
-    tampilkanModal("error", "Kendala Jaringan", err.message);
+    tampilkanModal("error", "Koneksi Tidak Stabil", "Konfirmasi dari server tidak sampai ke perangkat Anda, sehingga laporan mungkin sudah tercatat. Isian Anda masih tersimpan. Pastikan koneksi sudah stabil, lalu tekan tombol <b>Kirim Laporan Pengaduan</b> sekali lagi. Sistem akan mengenali kiriman yang sama dan menampilkan nomor tiket yang sudah ada, tanpa membuat tiket ganda.");
   } finally {
     setTimeout(() => {
       progressContainer.classList.add('hidden');

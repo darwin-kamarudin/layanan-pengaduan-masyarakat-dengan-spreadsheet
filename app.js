@@ -317,12 +317,60 @@ function tampilkanModal(tipe, judul, pesan) {
   setTimeout(() => { content.classList.remove('scale-95'); content.classList.add('scale-100'); }, 10);
 }
 
+// Data tiket yang menunggu untuk dijadikan gambar saat tombol "Saya Mengerti" diklik
+let tiketTertunda = null;
+
+async function simpanTiketSebagaiGambar(data) {
+  try {
+    // Nama instansi induk dan instansi kerja mengikuti CONFIG_HEADER:
+    // otomatis berisi data sheet "Pengaturan" jika ada, jika kosong memakai bawaan config.js (header halaman)
+    document.getElementById('kartuTiketPemda').textContent = CONFIG_HEADER.namaPemda || '';
+    document.getElementById('kartuTiketApp').textContent = CONFIG_HEADER.namaAplikasi || '';
+    const elKerja = document.getElementById('kartuTiketKerja');
+    elKerja.textContent = CONFIG_HEADER.keterangan || '';
+    elKerja.style.display = CONFIG_HEADER.keterangan ? 'block' : 'none';
+    document.getElementById('kartuTiketPemda').style.display = CONFIG_HEADER.namaPemda ? 'block' : 'none';
+
+    document.getElementById('kartuTiketNomor').textContent = data.ticketId;
+    document.getElementById('kartuTiketTanggal').textContent = data.tanggal;
+    document.getElementById('kartuTiketKategori').textContent = data.kategori || '-';
+
+    // samakan warna header kartu dengan tema halaman
+    const headerAsli = document.getElementById('headerInstansi');
+    if (headerAsli) {
+      document.getElementById('kartuTiketHead').style.background = getComputedStyle(headerAsli).backgroundColor;
+    }
+
+    const canvas = await html2canvas(document.getElementById('kartuTiket'), {
+      scale: 2, backgroundColor: null, useCORS: true
+    });
+    const link = document.createElement('a');
+    link.download = 'Tiket-' + data.ticketId + '.png';
+    link.href = canvas.toDataURL('image/png');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  } catch (err) {
+    console.error('Gagal membuat gambar tiket:', err);
+  }
+}
+
 function tutupModal() {
   const modal = document.getElementById('customModal');
   const content = document.getElementById('modalContent');
   content.classList.remove('scale-100');
   content.classList.add('scale-95');
-  setTimeout(() => { modal.classList.add('hidden'); }, 200);
+  setTimeout(() => {
+    modal.classList.add('hidden');
+    document.getElementById('modalTombol').innerText = 'Saya Mengerti';
+  }, 200);
+
+  // Jika modal yang ditutup adalah modal tiket, simpan otomatis sebagai gambar
+  if (tiketTertunda) {
+    const data = tiketTertunda;
+    tiketTertunda = null;
+    simpanTiketSebagaiGambar(data);
+  }
 }
 
 function getBase64(file) {
@@ -471,7 +519,16 @@ async function kirimAduan(e) {
       progressText.innerText = percent + '%';
     });
     if (result.status === "success") {
-      tampilkanModal("success", "Laporan Berhasil Dikirim!", `Simpan Nomor Tiket Anda:<br><br><span class="font-mono text-lg bg-emerald-50 text-emerald-800 px-3 py-1 rounded border border-emerald-200">${result.ticketId}</span>`);
+      // simpan data tiket untuk dijadikan gambar saat "Saya Mengerti" diklik (ambil sebelum form di-reset)
+      const sekarang = new Date();
+      tiketTertunda = {
+        ticketId: result.ticketId,
+        tanggal: sekarang.toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' }) + ' ' +
+                 sekarang.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
+        kategori: document.getElementById("inputKategori").value
+      };
+      tampilkanModal("success", "Laporan Berhasil Dikirim!", `Simpan Nomor Tiket Anda:<br><br><span class="font-mono text-lg bg-emerald-50 text-emerald-800 px-3 py-1 rounded border border-emerald-200">${result.ticketId}</span><br><br><span class="text-xs text-slate-500">Saat Anda menekan tombol di bawah, gambar tiket akan otomatis tersimpan di perangkat Anda.</span>`);
+      document.getElementById('modalTombol').innerText = 'Mengerti dan Simpan Tiket';
       document.getElementById("formAduan").reset();
       document.getElementById('containerKodeUpload').classList.add('hidden');
       localStorage.removeItem("draftAduan");

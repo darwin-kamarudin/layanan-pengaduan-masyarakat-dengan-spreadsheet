@@ -24,8 +24,8 @@ const CONFIG_TEMA = {
 // --- KONFIGURASI HEADER ---
 const CONFIG_HEADER = {
   namaPemda: "Pemerintah Kabupaten Kota", // Muncul sebagai lencana (badge) di atas
-  namaAplikasi: "LAYANAN PENGADUAN PUBLIK ONLINE", // Judul utama (h1)
-  keterangan: "Kanal Pengaduan Resmi - Dinas Pendidikan Kabupaten Kota ", // Teks penjelasan kecil di bawah
+  namaAplikasi: "SISTEM LAYANAN PENGADUAN PUBLIK", // Judul utama (h1)
+  keterangan: "Dinas Pendidikan dan Kebudayaan Kabupaten Kota ", // Teks penjelasan kecil di bawah
   
   logoUrl: "./public/asset/logo.svg", // Path relatif logo
   

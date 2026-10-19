@@ -120,11 +120,21 @@
             </div>
           </div>
           
+          <button type="button" onclick="bukaFormLuring()" class="w-full flex items-center justify-center gap-2 bg-tema-600 hover:bg-tema-700 text-white text-sm font-semibold py-3 rounded-xl transition">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+            Tambah Layanan Pengaduan (Luring)
+          </button>
+
           <div id="adminStat" class="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1"></div>
           
           <!-- FILTER 4 KOLOM (Pencarian, Kategori, Bulan, Tahun) -->
-          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2">
             <input type="search" id="adminCari" oninput="terapkanFilter()" placeholder="Cari tiket, nama, isi..." autocomplete="off" class="form-input">
+            <select id="adminFilterJenis" onchange="terapkanFilter()" class="form-input bg-white">
+              <option value="">Semua jenis layanan</option>
+              <option value="Daring">Daring (online)</option>
+              <option value="Luring">Luring (offline)</option>
+            </select>
             <select id="adminFilterKategori" onchange="terapkanFilter()" class="form-input bg-white"></select>
             <select id="adminFilterBulan" onchange="terapkanFilter()" class="form-input bg-white"></select>
             <select id="adminFilterTahun" onchange="terapkanFilter()" class="form-input bg-white"></select>
@@ -155,6 +165,75 @@
       </div>
     </section>
   </main>
+
+  <!-- KARTU LAPORAN PENGADUAN (PRATINJAU, CETAK, PDF, GAMBAR) -->
+  <div id="sheetKartu" class="hidden fixed inset-0 z-40 flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm sm:p-4" onclick="if(event.target===this) tutupKartu()">
+    <div class="bg-white w-full sm:max-w-lg rounded-t-2xl sm:rounded-2xl shadow-2xl max-h-[94vh] flex flex-col">
+      <div class="flex items-start justify-between gap-3 px-5 pt-4 pb-3 border-b border-slate-200 rounded-t-2xl shrink-0">
+        <div class="min-w-0">
+          <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Kartu Laporan Pengaduan (A5)</p>
+          <p id="kartuTiketJudul" class="font-mono text-sm font-bold text-tema-900 break-all"></p>
+        </div>
+        <button type="button" onclick="tutupKartu()" aria-label="Tutup" class="shrink-0 w-9 h-9 flex items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 text-xl leading-none">&times;</button>
+      </div>
+      <div class="px-4 py-3 overflow-y-auto flex-1 bg-slate-100">
+        <div id="kartuPratinjau" class="bg-white border border-slate-300 rounded-lg shadow-sm overflow-hidden mx-auto" style="max-width:560px;"></div>
+      </div>
+      <div class="shrink-0 grid grid-cols-3 gap-2 px-4 py-3 border-t border-slate-200 bg-white rounded-b-2xl">
+        <button type="button" id="btnKartuCetak" onclick="cetakKartuLangsung()" class="py-3 rounded-lg bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold transition disabled:opacity-50">Cetak Langsung</button>
+        <button type="button" id="btnKartuPdf" onclick="unduhPdfKartu()" class="py-3 rounded-lg bg-tema-600 hover:bg-tema-700 text-white text-xs font-semibold transition disabled:opacity-50">Simpan PDF</button>
+        <button type="button" id="btnKartuGambar" onclick="simpanGambarKartu()" class="py-3 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold transition disabled:opacity-50">Simpan Gambar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- FORM TAMBAH LAYANAN PENGADUAN LURING (DICATAT ADMIN) -->
+  <div id="sheetLuring" class="hidden fixed inset-0 z-40 flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm sm:p-4" onclick="if(event.target===this) tutupFormLuring()">
+    <div class="bg-white w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl shadow-2xl max-h-[92vh] overflow-y-auto">
+      <div class="sticky top-0 bg-white flex items-start justify-between gap-3 px-5 pt-4 pb-3 border-b border-slate-200 rounded-t-2xl z-10">
+        <div>
+          <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Pencatatan oleh Petugas</p>
+          <h3 class="text-sm font-bold text-slate-900">Tambah Layanan Pengaduan (Luring)</h3>
+        </div>
+        <button type="button" onclick="tutupFormLuring()" aria-label="Tutup" class="shrink-0 w-9 h-9 flex items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 text-xl leading-none">&times;</button>
+      </div>
+      <div class="px-5 py-4 space-y-4">
+        <p class="text-[11px] text-slate-600 bg-amber-50 border border-amber-200 rounded-lg p-2.5 leading-relaxed">Gunakan form ini untuk mencatat pengaduan yang diterima langsung (tatap muka, telepon, atau surat). Catatan otomatis ditandai <b>Luring</b> dan disimpan di sheet terpisah.</p>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label for="luringTanggal" class="block text-xs font-semibold text-slate-700 mb-1">Tanggal Diterima</label>
+            <input type="date" id="luringTanggal" class="form-input">
+          </div>
+          <div>
+            <label for="luringJam" class="block text-xs font-semibold text-slate-700 mb-1">Jam Diterima</label>
+            <input type="time" id="luringJam" class="form-input">
+          </div>
+        </div>
+        <p class="text-[11px] text-slate-500 -mt-2">Kosongkan tanggal dan jam untuk memakai waktu saat ini.</p>
+        <div>
+          <label for="luringNama" class="block text-xs font-semibold text-slate-700 mb-1">Nama Pelapor <span class="font-normal text-slate-400">(kosong = Anonim)</span></label>
+          <input type="text" id="luringNama" maxlength="150" autocomplete="off" class="form-input">
+        </div>
+        <div>
+          <label for="luringEmail" class="block text-xs font-semibold text-slate-700 mb-1">Email / Kontak <span class="font-normal text-slate-400">(opsional)</span></label>
+          <input type="text" id="luringEmail" maxlength="150" autocomplete="off" placeholder="Email atau nomor HP pelapor" class="form-input">
+        </div>
+        <div>
+          <label for="luringKategori" class="block text-xs font-semibold text-slate-700 mb-1">Kategori *</label>
+          <select id="luringKategori" class="form-input bg-white"></select>
+        </div>
+        <div>
+          <label for="luringRincian" class="block text-xs font-semibold text-slate-700 mb-1">Rincian Aduan * <span class="font-normal text-slate-400">(minimal 10 karakter)</span></label>
+          <textarea id="luringRincian" rows="5" maxlength="5000" placeholder="Tuliskan isi pengaduan yang disampaikan pelapor..." class="form-input"></textarea>
+        </div>
+        <p id="luringError" class="hidden text-xs font-semibold text-red-600 bg-red-50 border border-red-200 rounded-lg p-2.5"></p>
+      </div>
+      <div class="sticky bottom-0 bg-white grid grid-cols-2 gap-2 px-5 py-3 border-t border-slate-200">
+        <button type="button" onclick="tutupFormLuring()" class="py-3 rounded-lg border border-slate-300 text-sm font-semibold text-slate-700 hover:bg-slate-50">Batal</button>
+        <button type="button" id="btnSimpanLuring" onclick="simpanAduanLuring()" class="py-3 rounded-lg bg-tema-600 hover:bg-tema-700 text-white text-sm font-semibold transition">Simpan Catatan</button>
+      </div>
+    </div>
+  </div>
 
   <!-- FORM AKSI TINDAK LANJUT -->
   <div id="sheetAksi" class="hidden fixed inset-0 z-40 flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm sm:p-4" onclick="if(event.target===this) tutupFormAksi()">
@@ -225,8 +304,14 @@
           <input type="text" id="setInstansiKerja" maxlength="200" placeholder="Contoh: Badan Pengelolaan Keuangan dan Aset Daerah" class="form-input">
         </div>
         <div>
-          <label for="setJudulRekapan" class="block text-xs font-semibold text-slate-700 mb-1">Nama Judul Rekapan Cetak *</label>
+          <label for="setJudulAplikasi" class="block text-xs font-semibold text-slate-700 mb-1">Judul Aplikasi (Header) *</label>
+          <input type="text" id="setJudulAplikasi" maxlength="150" placeholder="Contoh: Sistem Layanan Pengaduan Publik" class="form-input">
+          <p class="text-[11px] text-slate-500 mt-1">Tampil sebagai judul utama di header halaman dan pada gambar tiket pelapor.</p>
+        </div>
+        <div>
+          <label for="setJudulRekapan" class="block text-xs font-semibold text-slate-700 mb-1">Judul Rekapan Cetak *</label>
           <input type="text" id="setJudulRekapan" maxlength="150" placeholder="Contoh: Rekapan Layanan Pengaduan Masyarakat" class="form-input">
+          <p class="text-[11px] text-slate-500 mt-1">Tampil sebagai judul pada hasil cetak rekapan. Tulis lengkap termasuk kata "Rekapan", terpisah dari judul header.</p>
         </div>
         <p id="setError" class="hidden text-xs font-semibold text-red-600 bg-red-50 border border-red-200 rounded-lg p-2.5"></p>
       </div>
@@ -272,6 +357,7 @@
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

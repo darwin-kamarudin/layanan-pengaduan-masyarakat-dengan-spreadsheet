@@ -36,6 +36,7 @@ function terapkanPengaturanKeConfig(cfg) {
   if (!cfg || typeof cfg !== "object") return;
   if (cfg.instansiInduk) CONFIG_HEADER.namaPemda = cfg.instansiInduk;
   if (cfg.instansiKerja) CONFIG_HEADER.keterangan = cfg.instansiKerja;
+  if (cfg.judulAplikasi) CONFIG_HEADER.namaAplikasi = cfg.judulAplikasi;
   if (cfg.judulRekapan)  CONFIG_HEADER.judulRekapan = cfg.judulRekapan;
   if (cfg.logoUrl)       CONFIG_HEADER.logoUrl = cfg.logoUrl;
   if (cfg.logoUrl) {
@@ -61,6 +62,7 @@ async function muatPengaturanServer() {
 function bukaPengaturan() {
   document.getElementById("setInstansiInduk").value = CONFIG_HEADER.namaPemda || "";
   document.getElementById("setInstansiKerja").value = CONFIG_HEADER.keterangan || "";
+  document.getElementById("setJudulAplikasi").value = CONFIG_HEADER.namaAplikasi || "";
   document.getElementById("setJudulRekapan").value = CONFIG_HEADER.judulRekapan || ("Rekapan " + (CONFIG_HEADER.namaAplikasi || "Layanan Pengaduan"));
   document.getElementById("inputLogoUrl").value = CONFIG_HEADER.logoUrl || "";
   document.getElementById("inputFileLogo").value = "";
@@ -112,10 +114,11 @@ async function pilihFileLogo(input) {
 async function simpanPengaturanAdmin() {
   const instansiInduk = document.getElementById("setInstansiInduk").value.trim();
   const instansiKerja = document.getElementById("setInstansiKerja").value.trim();
+  const judulAplikasi = document.getElementById("setJudulAplikasi").value.trim();
   const judulRekapan = document.getElementById("setJudulRekapan").value.trim();
   const logoUrl = document.getElementById("inputLogoUrl").value.trim();
 
-  if (!instansiInduk || !instansiKerja || !judulRekapan) {
+  if (!instansiInduk || !instansiKerja || !judulAplikasi || !judulRekapan) {
     return tampilkanErrorPengaturan("Semua kolom wajib diisi.");
   }
 
@@ -130,6 +133,7 @@ async function simpanPengaturanAdmin() {
       kodeAkses: kodeAksesAktif,
       instansiInduk,
       instansiKerja,
+      judulAplikasi,
       judulRekapan,
       logoUrl
     });
@@ -141,7 +145,7 @@ async function simpanPengaturanAdmin() {
       ['form', 'lacak', 'admin'].forEach(tab => setGayaTab(tab, tab === 'admin'));
       mulaiJudulBerjalan();
       tutupPengaturan();
-      tampilkanModal("success", "Pengaturan Disimpan", "Header utama, logo, dan kop rekapan berhasil diperbarui!");
+      tampilkanModal("success", "Pengaturan Disimpan", "Judul header, logo, dan kop rekapan berhasil diperbarui!");
     } else if (res.status === "forbidden") {
       tutupPengaturan();
       keluarAdmin();
@@ -222,6 +226,16 @@ function renderKategori() {
     opt.textContent = kategori;
     selectKategori.appendChild(opt);
   });
+  const selLuring = document.getElementById("luringKategori");
+  if (selLuring) {
+    selLuring.innerHTML = "";
+    CONFIG_KATEGORI.forEach(kategori => {
+      const opt = document.createElement("option");
+      opt.value = kategori;
+      opt.textContent = kategori;
+      selLuring.appendChild(opt);
+    });
+  }
 }
 
 function simpanDraft() {
@@ -764,9 +778,12 @@ function keluarAdmin() {
   dataRekapan = [];
   dataTampil = [];
   itemDiedit = null;
+  itemKartu = null;
+  document.getElementById("sheetKartu").classList.add("hidden");
   filterStatusAktif = -1;
   halamanAktif = 1;
   document.getElementById("adminCari").value = "";
+  if (document.getElementById("adminFilterJenis")) document.getElementById("adminFilterJenis").value = "";
   if (document.getElementById("adminFilterBulan")) document.getElementById("adminFilterBulan").value = "";
   if (document.getElementById("adminFilterTahun")) document.getElementById("adminFilterTahun").value = "";
   document.getElementById("areaCetak").innerHTML = "";
@@ -826,6 +843,7 @@ function setFilterStatus(idx) {
 function terapkanFilter(resetHalaman = true) {
   const q = document.getElementById("adminCari").value.trim().toLowerCase();
   const kat = document.getElementById("adminFilterKategori").value;
+  const jns = document.getElementById("adminFilterJenis") ? document.getElementById("adminFilterJenis").value : "";
   const bln = document.getElementById("adminFilterBulan") ? document.getElementById("adminFilterBulan").value : "";
   const thn = document.getElementById("adminFilterTahun") ? document.getElementById("adminFilterTahun").value : "";
   const st = filterStatusAktif >= 0 ? STATUS_OPSI[filterStatusAktif].value : "";
@@ -834,6 +852,7 @@ function terapkanFilter(resetHalaman = true) {
     const bt = ekstrakBulanTahun(i.tanggal);
     return (!st || i.status === st) &&
            (!kat || i.kategori === kat) &&
+           (!jns || (i.jenis || "Daring") === jns) &&
            (!bln || bt.bulan === bln) &&
            (!thn || bt.tahun === thn) &&
            (!q || [i.ticketId, i.nama, i.rincian, i.tindakLanjut].join(" ").toLowerCase().includes(q));
@@ -866,7 +885,7 @@ function renderKartu() {
   dataTampil.slice(mulai, mulai + ukuranHalaman).forEach(item => {
     const adaLampiran = item.lampiran && item.lampiran.startsWith("http");
     const panjang = (item.rincian || "").length > 180;
-    const rn = Number(item.rowNum);
+    const rn = item.uid;
     const kartu = document.createElement("article");
     kartu.className = "bg-white rounded-2xl border border-slate-200 shadow-sm p-4 space-y-3";
     kartu.innerHTML = `
@@ -878,18 +897,23 @@ function renderKartu() {
         <span class="shrink-0 px-2.5 py-1 rounded-full text-[10px] font-bold ${warnaStatus(item.status)}">${esc(labelStatus(item.status))}</span>
       </div>
       <div class="flex flex-wrap gap-1.5 text-[11px]">
+        <span class="px-2 py-0.5 rounded-md font-bold ${item.jenis === "Luring" ? "bg-amber-100 text-amber-800" : "bg-sky-100 text-sky-800"}">${esc(item.jenis || "Daring")}</span>
         <span class="px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 font-semibold">${esc(item.nama || "Anonim")}</span>
         ${item.kategori ? `<span class="px-2 py-0.5 rounded-md bg-tema-50 text-tema-700">${esc(item.kategori)}</span>` : ""}
       </div>
       <div>
         <p id="rc-${rn}" class="text-sm text-slate-700 leading-relaxed whitespace-pre-line break-words ${panjang ? "clamp-4" : ""}">${esc(item.rincian)}</p>
-        ${panjang ? `<button type="button" id="rt-${rn}" onclick="toggleRincian(${rn})" class="text-xs font-semibold text-tema-600 mt-1">Selengkapnya</button>` : ""}
+        ${panjang ? `<button type="button" id="rt-${rn}" onclick="toggleRincian('${rn}')" class="text-xs font-semibold text-tema-600 mt-1">Selengkapnya</button>` : ""}
       </div>
       ${item.tindakLanjut ? `<div class="bg-slate-50 border border-slate-200 rounded-lg p-3 text-xs"><p class="font-semibold text-slate-700 mb-0.5">Catatan petugas</p><p class="text-slate-600 whitespace-pre-line break-words">${esc(item.tindakLanjut)}</p></div>` : ""}
       <div class="flex gap-2 pt-1">
         ${adaLampiran ? `<a href="${esc(item.lampiran)}" target="_blank" rel="noopener noreferrer" class="flex-1 text-center py-2.5 rounded-lg border border-slate-300 text-xs font-semibold text-slate-700 hover:bg-slate-50">Lihat Lampiran</a>` : ""}
-        <button type="button" onclick="bukaFormAksi(${rn})" class="flex-1 py-2.5 rounded-lg bg-tema-600 hover:bg-tema-700 text-white text-xs font-semibold transition">${item.tindakLanjut ? "Perbarui Tindak Lanjut" : "Beri Tindak Lanjut"}</button>
-      </div>`;
+        <button type="button" onclick="bukaFormAksi('${rn}')" class="flex-1 py-2.5 rounded-lg bg-tema-600 hover:bg-tema-700 text-white text-xs font-semibold transition">${item.tindakLanjut ? "Perbarui Tindak Lanjut" : "Beri Tindak Lanjut"}</button>
+      </div>
+      <button type="button" onclick="bukaKartu('${rn}')" class="w-full flex items-center justify-center gap-1.5 py-2.5 rounded-lg border border-slate-300 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+        Cetak Kartu Laporan
+      </button>`;
     wadah.appendChild(kartu);
   });
   renderPaginasi();
@@ -952,8 +976,8 @@ function toggleRincian(rn) {
   b.innerText = ringkas ? "Selengkapnya" : "Sembunyikan";
 }
 
-function bukaFormAksi(rowNum) {
-  const item = dataRekapan.find(i => Number(i.rowNum) === Number(rowNum));
+function bukaFormAksi(uid) {
+  const item = dataRekapan.find(i => i.uid === uid);
   if (!item) return;
   itemDiedit = item;
   document.getElementById("aksiTiket").innerText = item.ticketId;
@@ -1015,6 +1039,7 @@ async function simpanTindakLanjut() {
       action: "updateTindakLanjut",
       kodeAkses: kodeAksesAktif,
       rowNum: itemDiedit.rowNum,
+      jenis: itemDiedit.jenis || "Daring",
       ticketId: itemDiedit.ticketId,
       status: pilih.value,
       tindakLanjut: penjelasan
@@ -1038,6 +1063,312 @@ async function simpanTindakLanjut() {
   }
 }
 
+// ================= KARTU LAPORAN PENGADUAN (CETAK / PDF / GAMBAR) =================
+let itemKartu = null;
+let fotoKartu = null;          // data URL foto lampiran (null = belum/gagal dimuat)
+let statusFotoKartu = "none";  // none | loading | ok | gagal
+const cacheFotoKartu = {};
+
+function htmlKartuLaporan_(item, statusFoto, fotoSrc) {
+  const headerAsli = document.getElementById("headerInstansi");
+  const warna = headerAsli ? getComputedStyle(headerAsli).backgroundColor : "#1e293b";
+  const waktu = new Date().toLocaleString("id-ID", { dateStyle: "long", timeStyle: "short" });
+  const jenis = item.jenis || "Daring";
+  const baris = (label, isi) => isi ? `
+    <tr>
+      <td style="width:92px; padding:5px 0; color:#64748b; vertical-align:top;">${label}</td>
+      <td style="padding:5px 0; color:#0f172a; font-weight:600; vertical-align:top; word-break:break-word;">${isi}</td>
+    </tr>` : "";
+
+  let blokFoto = "";
+  if (statusFoto === "loading") {
+    blokFoto = `<div style="margin-top:12px; padding:14px; border:1px dashed #cbd5e1; border-radius:8px; text-align:center; font-size:11px; color:#64748b;">Memuat foto lampiran...</div>`;
+  } else if (statusFoto === "ok" && fotoSrc) {
+    blokFoto = `
+      <div style="margin-top:12px;">
+        <div style="font-size:11px; font-weight:700; color:#475569; margin-bottom:4px;">Foto Lampiran</div>
+        <div style="border:1px solid #cbd5e1; border-radius:8px; padding:6px; text-align:center; background:#f8fafc;">
+          <img src="${fotoSrc}" alt="Lampiran" style="max-width:100%; max-height:260px; object-fit:contain; display:inline-block;">
+        </div>
+      </div>`;
+  } else if (statusFoto === "gagal") {
+    blokFoto = `<div style="margin-top:12px; padding:10px; border:1px dashed #fca5a5; border-radius:8px; font-size:11px; color:#b91c1c; background:#fef2f2;">Lampiran tersedia, tetapi fotonya tidak dapat ditampilkan pada kartu ini. Buka melalui menu Lihat Lampiran.</div>`;
+  }
+
+  const blokTindak = item.tindakLanjut ? `
+      <div style="margin-top:12px;">
+        <div style="font-size:11px; font-weight:700; color:#475569; margin-bottom:4px;">Catatan Tindak Lanjut</div>
+        <div style="border:1px solid #e2e8f0; border-radius:8px; padding:9px 11px; font-size:12px; line-height:1.55; white-space:pre-wrap; word-break:break-word; background:#f8fafc;">${esc(item.tindakLanjut)}</div>
+      </div>` : "";
+
+  return `
+  <div style="box-sizing:border-box; width:100%; padding:22px 22px 18px; background:#ffffff; color:#0f172a; font-family:system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif;">
+    <div style="text-align:center; padding-bottom:12px; border-bottom:3px solid ${warna};">
+      ${CONFIG_HEADER.namaPemda ? `<div style="font-size:10px; font-weight:700; letter-spacing:1px; text-transform:uppercase; color:#475569;">${esc(CONFIG_HEADER.namaPemda)}</div>` : ""}
+      <div style="font-size:15px; font-weight:800; line-height:1.3; margin-top:3px;">${esc(CONFIG_HEADER.namaAplikasi || "")}</div>
+      ${CONFIG_HEADER.keterangan ? `<div style="font-size:10.5px; font-weight:600; color:#475569; margin-top:3px; line-height:1.4;">${esc(CONFIG_HEADER.keterangan)}</div>` : ""}
+    </div>
+
+    <div style="text-align:center; margin:14px 0 10px;">
+      <div style="font-size:11px; font-weight:800; letter-spacing:2px; color:#475569;">KARTU LAPORAN PENGADUAN</div>
+      <div style="font-family:Consolas,'Courier New',monospace; font-size:22px; font-weight:800; color:#0f172a; margin-top:6px;">${esc(item.ticketId)}</div>
+      <div style="display:inline-block; margin-top:4px; padding:2px 10px; border:1px solid #94a3b8; border-radius:999px; font-size:11px; font-weight:700; color:#334155;">${esc(jenis)}</div>
+    </div>
+
+    <table style="width:100%; font-size:12px; border-collapse:collapse; border-top:1px solid #e2e8f0; border-bottom:1px solid #e2e8f0;">
+      ${baris("Tanggal", esc(item.tanggal) + (item.jam ? " &nbsp;" + esc(item.jam) : ""))}
+      ${baris("Pelapor", esc(item.nama || "Anonim"))}
+      ${baris("Kontak", esc(item.email || ""))}
+      ${baris("Kategori", esc(item.kategori || "-"))}
+      ${baris("Status", esc(labelStatus(item.status)))}
+    </table>
+
+    <div style="margin-top:12px;">
+      <div style="font-size:11px; font-weight:700; color:#475569; margin-bottom:4px;">Rincian Aduan</div>
+      <div style="border:1px solid #cbd5e1; border-radius:8px; padding:10px 12px; font-size:12.5px; line-height:1.6; white-space:pre-wrap; word-break:break-word;">${esc(item.rincian || "-")}</div>
+    </div>
+    ${blokFoto}
+    ${blokTindak}
+
+    <div style="margin-top:14px; padding-top:8px; border-top:1px dashed #cbd5e1; font-size:10px; color:#64748b; text-align:right;">Dicetak: ${esc(waktu)}</div>
+  </div>`;
+}
+
+function statusFotoUntuk_(item) {
+  const adaLampiran = item.lampiran && String(item.lampiran).startsWith("http");
+  return adaLampiran ? statusFotoKartu : "none";
+}
+
+function renderPratinjauKartu_() {
+  if (!itemKartu) return;
+  document.getElementById("kartuPratinjau").innerHTML = htmlKartuLaporan_(itemKartu, statusFotoUntuk_(itemKartu), fotoKartu);
+}
+
+function setTombolKartu_(aktif, teksAktif) {
+  [["btnKartuCetak", "Cetak Langsung"], ["btnKartuPdf", "Simpan PDF"], ["btnKartuGambar", "Simpan Gambar"]].forEach(([id, teks]) => {
+    const b = document.getElementById(id);
+    b.disabled = !aktif;
+    b.innerText = teksAktif && !aktif ? teksAktif : teks;
+  });
+}
+
+async function bukaKartu(uid) {
+  const item = dataRekapan.find(i => i.uid === uid);
+  if (!item) return;
+  itemKartu = item;
+  fotoKartu = null;
+  const adaLampiran = item.lampiran && String(item.lampiran).startsWith("http");
+  statusFotoKartu = adaLampiran ? "loading" : "none";
+
+  document.getElementById("kartuTiketJudul").innerText = item.ticketId;
+  renderPratinjauKartu_();
+  setTombolKartu_(!adaLampiran);
+  document.getElementById("sheetKartu").classList.remove("hidden");
+  document.body.classList.add("overflow-hidden");
+  if (!adaLampiran) return;
+
+  try {
+    if (cacheFotoKartu[item.ticketId]) {
+      fotoKartu = cacheFotoKartu[item.ticketId];
+    } else {
+      const res = await panggilAPI({ action: "getLampiranKartu", kodeAkses: kodeAksesAktif, rowNum: item.rowNum, jenis: item.jenis || "Daring", ticketId: item.ticketId });
+      if (res.status === "forbidden") {
+        tutupKartu();
+        keluarAdmin();
+        return tampilkanModal("error", "Akses Ditolak", "Sesi admin tidak valid. Silakan login kembali.");
+      }
+      if (res.status === "success" && res.dataUrl) {
+        fotoKartu = res.dataUrl;
+        cacheFotoKartu[item.ticketId] = res.dataUrl;
+      }
+    }
+  } catch (err) { /* ditangani sebagai gagal di bawah */ }
+
+  if (itemKartu !== item) return;   // kartu sudah ditutup / diganti selagi memuat
+  statusFotoKartu = fotoKartu ? "ok" : "gagal";
+  renderPratinjauKartu_();
+  setTombolKartu_(true);
+}
+
+function tutupKartu() {
+  document.getElementById("sheetKartu").classList.add("hidden");
+  document.body.classList.remove("overflow-hidden");
+  itemKartu = null;
+}
+
+function namaBerkasKartu_() {
+  return "Kartu-Aduan_" + String(itemKartu.ticketId).replace(/[^A-Za-z0-9_-]/g, "");
+}
+
+async function cetakKartuLangsung() {
+  if (!itemKartu) return;
+  const lama = document.getElementById("stylePageKartu");
+  if (lama) lama.remove();
+  const gaya = document.createElement("style");
+  gaya.id = "stylePageKartu";
+  gaya.textContent = "@page { size: A5 portrait; margin: 8mm; }";
+  document.head.appendChild(gaya);
+
+  const area = document.getElementById("areaCetak");
+  area.innerHTML = htmlKartuLaporan_(itemKartu, statusFotoUntuk_(itemKartu), fotoKartu);
+  await tungguGambar(area);
+
+  const bersihkan = () => {
+    gaya.remove();
+    area.innerHTML = "";
+    window.removeEventListener("afterprint", bersihkan);
+  };
+  window.addEventListener("afterprint", bersihkan);
+  window.print();
+}
+
+// Render kartu pada lebar tetap (setara lebar A5) agar hasil gambar/PDF konsisten di semua perangkat
+async function buatKanvasKartu_() {
+  if (typeof html2canvas === "undefined") throw new Error("Pustaka gambar belum termuat. Periksa koneksi internet lalu coba lagi.");
+  const wadah = document.createElement("div");
+  wadah.style.cssText = "position:fixed; left:-9999px; top:0; width:560px; background:#ffffff;";
+  wadah.innerHTML = htmlKartuLaporan_(itemKartu, statusFotoUntuk_(itemKartu), fotoKartu);
+  document.body.appendChild(wadah);
+  try {
+    await tungguGambar(wadah);
+    return await html2canvas(wadah, { scale: 2, backgroundColor: "#ffffff", useCORS: true });
+  } finally {
+    wadah.remove();
+  }
+}
+
+async function simpanGambarKartu() {
+  if (!itemKartu) return;
+  setTombolKartu_(false, "Memproses...");
+  try {
+    const canvas = await buatKanvasKartu_();
+    const link = document.createElement("a");
+    link.download = namaBerkasKartu_() + ".png";
+    link.href = canvas.toDataURL("image/png");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  } catch (err) {
+    tampilkanModal("error", "Gagal Menyimpan Gambar", err.message || "Terjadi kesalahan.");
+  } finally {
+    setTombolKartu_(true);
+  }
+}
+
+async function unduhPdfKartu() {
+  if (!itemKartu) return;
+  setTombolKartu_(false, "Memproses...");
+  try {
+    if (!window.jspdf || !window.jspdf.jsPDF) throw new Error("Pustaka PDF belum termuat. Periksa koneksi internet lalu coba lagi.");
+    const canvas = await buatKanvasKartu_();
+    const pdf = new window.jspdf.jsPDF({ unit: "mm", format: "a5", orientation: "portrait" });
+    const lebarHal = pdf.internal.pageSize.getWidth();
+    const tinggiHal = pdf.internal.pageSize.getHeight();
+    const margin = 6;
+    const lebar = lebarHal - margin * 2;
+    const tinggiIsi = tinggiHal - margin * 2;
+    const mmPerPx = lebar / canvas.width;
+
+    if (canvas.height * mmPerPx <= tinggiIsi) {
+      pdf.addImage(canvas.toDataURL("image/jpeg", 0.95), "JPEG", margin, margin, lebar, canvas.height * mmPerPx);
+    } else {
+      // Isi panjang: bagi menjadi beberapa halaman A5
+      const pxPerHal = Math.floor(tinggiIsi / mmPerPx);
+      for (let y = 0, hal = 0; y < canvas.height; y += pxPerHal, hal++) {
+        const h = Math.min(pxPerHal, canvas.height - y);
+        const potongan = document.createElement("canvas");
+        potongan.width = canvas.width;
+        potongan.height = h;
+        const ctx = potongan.getContext("2d");
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, potongan.width, potongan.height);
+        ctx.drawImage(canvas, 0, y, canvas.width, h, 0, 0, canvas.width, h);
+        if (hal > 0) pdf.addPage();
+        pdf.addImage(potongan.toDataURL("image/jpeg", 0.95), "JPEG", margin, margin, lebar, h * mmPerPx);
+      }
+    }
+    pdf.save(namaBerkasKartu_() + ".pdf");
+  } catch (err) {
+    tampilkanModal("error", "Gagal Membuat PDF", err.message || "Terjadi kesalahan.");
+  } finally {
+    setTombolKartu_(true);
+  }
+}
+
+// ================= TAMBAH LAYANAN PENGADUAN LURING =================
+let kunciLuring = { kunci: "", sidik: "" };
+
+function kunciLuringUntuk_(sidik) {
+  if (!kunciLuring.kunci || kunciLuring.sidik !== sidik) kunciLuring = { kunci: buatKunciKirim_(), sidik: sidik };
+  return kunciLuring.kunci;
+}
+
+function tampilkanErrorLuring(pesan) {
+  const el = document.getElementById("luringError");
+  el.innerText = pesan;
+  el.classList.toggle("hidden", !pesan);
+}
+
+function bukaFormLuring() {
+  ["luringTanggal", "luringJam", "luringNama", "luringEmail", "luringRincian"].forEach(id => { document.getElementById(id).value = ""; });
+  const d = new Date();
+  const hariIni = d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+  document.getElementById("luringTanggal").max = hariIni;
+  kunciLuring = { kunci: "", sidik: "" };
+  tampilkanErrorLuring("");
+  document.getElementById("sheetLuring").classList.remove("hidden");
+  document.body.classList.add("overflow-hidden");
+}
+
+function tutupFormLuring() {
+  document.getElementById("sheetLuring").classList.add("hidden");
+  document.body.classList.remove("overflow-hidden");
+}
+
+async function simpanAduanLuring() {
+  const rincian = document.getElementById("luringRincian").value.trim();
+  if (rincian.length < 10) return tampilkanErrorLuring("Rincian aduan wajib diisi (minimal 10 karakter).");
+
+  const payload = {
+    action: "tambahAduanLuring",
+    kodeAkses: kodeAksesAktif,
+    tanggal: document.getElementById("luringTanggal").value,
+    jam: document.getElementById("luringJam").value,
+    nama: document.getElementById("luringNama").value.trim(),
+    email: document.getElementById("luringEmail").value.trim(),
+    kategori: document.getElementById("luringKategori").value,
+    rincian: rincian
+  };
+  payload.kunciKirim = kunciLuringUntuk_([payload.tanggal, payload.jam, payload.nama, payload.email, payload.kategori, payload.rincian].join("\u241F"));
+
+  const btn = document.getElementById("btnSimpanLuring");
+  btn.disabled = true;
+  btn.innerText = "Menyimpan...";
+  tampilkanErrorLuring("");
+  try {
+    const res = await kirimDenganUlang_(payload, null, (ke, maks) => {
+      btn.innerText = `Koneksi tidak stabil, mencoba lagi (${ke}/${maks})...`;
+    });
+    if (res.status === "success") {
+      kunciLuring = { kunci: "", sidik: "" };
+      tutupFormLuring();
+      tampilkanModal("success", "Layanan Luring Tercatat", `Nomor tiket pengaduan:<br><br><span class="font-mono text-lg bg-emerald-50 text-emerald-800 px-3 py-1 rounded border border-emerald-200">${esc(res.ticketId)}</span><br><br><span class="text-xs text-slate-500">Berikan nomor tiket ini kepada pelapor agar dapat memantau status melalui menu Lacak Status.</span>`);
+      muatUlangRekapan();
+    } else if (res.status === "forbidden") {
+      tutupFormLuring();
+      keluarAdmin();
+      tampilkanModal("error", "Akses Ditolak", "Sesi admin tidak valid. Silakan login kembali.");
+    } else {
+      tampilkanErrorLuring(res.message || "Gagal menyimpan catatan.");
+    }
+  } catch (err) {
+    tampilkanErrorLuring("Koneksi tidak stabil. Catatan mungkin sudah tersimpan. Tekan Simpan Catatan sekali lagi, sistem tidak akan membuat catatan ganda.");
+  } finally {
+    btn.disabled = false;
+    btn.innerText = "Simpan Catatan";
+  }
+}
+
 function filterAktifTeks() {
   const bagian = [];
   const bln = document.getElementById("adminFilterBulan") ? document.getElementById("adminFilterBulan").value : "";
@@ -1050,6 +1381,8 @@ function filterAktifTeks() {
   if (filterStatusAktif >= 0) bagian.push("Status: " + STATUS_OPSI[filterStatusAktif].label);
   const kat = document.getElementById("adminFilterKategori").value;
   if (kat) bagian.push("Kategori: " + kat);
+  const jns = document.getElementById("adminFilterJenis") ? document.getElementById("adminFilterJenis").value : "";
+  if (jns) bagian.push("Jenis: " + jns);
   const q = document.getElementById("adminCari").value.trim();
   if (q) bagian.push(`Pencarian: "${q}"`);
   return bagian.length ? bagian.join(" | ") : "Semua data";
@@ -1058,7 +1391,7 @@ function filterAktifTeks() {
 function unduhExcel() {
   if (!dataTampil.length) return tampilkanModal("error", "Tidak Ada Data", "Tidak ada data untuk diunduh.");
   const baris = dataTampil.map((i, n) => ({
-    "No": n + 1, "No. Tiket": i.ticketId, "Tanggal": i.tanggal, "Jam": i.jam || "",
+    "No": n + 1, "No. Tiket": i.ticketId, "Jenis Layanan": i.jenis || "Daring", "Tanggal": i.tanggal, "Jam": i.jam || "",
     "Nama Pelapor": i.nama, "Email": i.email || "", "Kategori": i.kategori || "",
     "Rincian Aduan": i.rincian, "Lampiran": i.lampiran || "-",
     "Status": labelStatus(i.status), "Tindak Lanjut": i.tindakLanjut || ""
@@ -1093,6 +1426,8 @@ function tungguGambar(wadah) {
 }
 
 async function cetakRekapan() {
+  const sisaGayaKartu = document.getElementById("stylePageKartu");
+  if (sisaGayaKartu) sisaGayaKartu.remove();
   if (!dataTampil.length) return tampilkanModal("error", "Tidak Ada Data", "Tidak ada data untuk dicetak.");
   const waktu = new Date().toLocaleString("id-ID", { dateStyle: "long", timeStyle: "short" });
   const linkIkon = document.querySelector('link[rel~="icon"]');
@@ -1105,7 +1440,7 @@ async function cetakRekapan() {
       <td>${n + 1}</td>
       <td>
         <div class="cetak-subjudul">${esc(i.nama || "Anonim")}</div>
-        <div class="mono">${esc(i.ticketId)}</div>
+        <div class="mono">${esc(i.ticketId)} (${esc(i.jenis || "Daring")})</div>
         <div class="kecil">${esc(i.tanggal)}${i.jam ? " " + esc(i.jam) : ""}</div>
       </td>
       <td>

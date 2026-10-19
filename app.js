@@ -1110,10 +1110,10 @@ function htmlKartuLaporan_(item, statusFoto, fotoSrc) {
     </div>
 
     <div style="text-align:center; margin:14px 0 10px;">
-      <div style="font-size:11px; font-weight:800; letter-spacing:2px; color:#475569;">KARTU LAPORAN PENGADUAN</div>
-      <div style="font-family:Consolas,'Courier New',monospace; font-size:22px; font-weight:800; color:#0f172a; margin-top:6px;">${esc(item.ticketId)}</div>
-      <div style="display:inline-block; margin-top:4px; padding:2px 10px; border:1px solid #94a3b8; border-radius:999px; font-size:11px; font-weight:700; color:#334155;">${esc(jenis)}</div>
-    </div>
+  <div style="font-size:11px; font-weight:800; letter-spacing:2px; color:#475569;">KARTU LAPORAN PENGADUAN</div>
+  <div style="font-family:Consolas,'Courier New',monospace; font-size:22px; font-weight:800; color:#0f172a; margin-top:6px;">${esc(item.ticketId)}</div>
+  <div style="display:inline-block; margin-top:4px; font-size:12px; font-weight:700; color:#334155;">${esc(jenis)}</div>
+</div>
 
     <table style="width:100%; font-size:12px; border-collapse:collapse; border-top:1px solid #e2e8f0; border-bottom:1px solid #e2e8f0;">
       ${baris("Tanggal", esc(item.tanggal) + (item.jam ? " &nbsp;" + esc(item.jam) : ""))}

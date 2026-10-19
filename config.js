@@ -15,7 +15,7 @@ const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwRQHIgJQl7PytRuaD1-
 // Opsional: isi paletKustom dengan 11 warna hex (tingkat 50-950) untuk warna sendiri, contoh:
 //   paletKustom: { 50:"#...", 100:"#...", 200:"#...", 300:"#...", 400:"#...", 500:"#...", 600:"#...", 700:"#...", 800:"#...", 900:"#...", 950:"#..." }
 const CONFIG_TEMA = {
-  warna: "teal"
+  warna: "indigo"
 };
 
 // --- CATATAN PENYESUAIAN: KONFIGURASI HEADER ---
